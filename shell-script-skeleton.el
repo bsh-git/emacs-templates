@@ -93,7 +93,7 @@
   (shsskel:expand-skeleton-as-string 'sh-mode
    (and (not (string= opt ""))
 	`("" nil
-	  "args=$(getopt " opt " $*)\n"
+	  "args=$(getopt " ,opt " $*)\n"
 	  "if [ $? -ne 0 ]; then\n"
 	  > "echo >&2 \"Usage: $0 ...\";" ?\n
 	  > "exit 2" ?\n
@@ -104,7 +104,6 @@
 	  "done\n"
 	  )
 	)))
-
 
 (provide 'shell-script-skeleton)
 ;;; shell-script-skeleton.el ends here
