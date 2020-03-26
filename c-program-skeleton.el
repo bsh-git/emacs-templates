@@ -71,16 +71,17 @@
 
 (define-skeleton c-header-skeleton
   "Template for C header file."
-  (cps:include-guard (buffer-file-name))
+  (cps:select-include-guard (buffer-file-name))
   '(setq v1 (if (netbsd-top-dir (file-name-directory (buffer-file-name)))
 		(my-netbsd-copyright)
-	      ""))
+	      "/*\n *\n */\n"))
   v1
-  "#ifdef  "  str \n
-  "#define " str \n
+  '(setq v1 (cps:make-include-guard1 (eval str)))
+  '(setq v2 (cps:make-include-guard2 str))
+  v1
   \n
   _ \n
-  "#endif /* " str " */" \n)
+  v2 \n)
 
 (defun netbsd-top-dir-p (dir)
   (let ((build-sh (expand-file-name "build.sh" dir))
@@ -90,10 +91,22 @@
 	 (file-readable-p building)
 	 (file-directory-p share-mk))))
 
+(defun cps:make-include-guard1 (str)
+  (if (null str)
+      ""
+    (concat "#ifndef " str "\n#define " str "\n")))
+
+(defun cps:make-include-guard2 (str)
+  (if (or (null str) (string= "" str))
+      ""
+    (concat "#endif  /*" str " */")))
+
 (defun cps:root-directory-p (dir)
   (string= dir (file-name-directory (directory-file-name dir))))
 
 (defun cps:include-guard (filename)
+  "make a symbol for include guard. up to 4 directories can be included in the symbol"
+  (skeleton-read prompt
   (concat "_"
 	  (upcase
 	   (or
@@ -128,6 +141,50 @@
 	    (netbsd-c-skeleton))
 	(plain-c-skeleton)))))
 
+
+(defun cps:make-prompt-for-candidates (lis)
+  (setq lis (cons "none" lis))
+  (let* ((n -1)
+	 (s (mapconcat #'(lambda (s)
+			   (setq n (1+ n))
+			   (format "(%d) %s" n s))
+		       lis
+		       ", ")))
+    (concat "Select guard symbol: " s ": ")))
+
+(defun cps:select-include-guard (filename)
+  (let ((nbtop  (netbsd-top-dir (file-name-directory filename))))
+    (if nbtop
+	(setq filename (substring filename (length nbtop))))
+    (let* ((lis (cps:include-guard-candidates filename))
+	   (prompt (cps:make-prompt-for-candidates lis))
+	   (n -1)
+	   )
+      ;; XXX dont'be too long.
+      (while (or (< n 0) (> n (length lis)))
+	(setq n (- (read-char prompt) ?0)))
+      (and (/= n 0)
+	   (nth (- n 1) lis)))))
+
+(defun cps:include-guard-candidates (filename)
+  (let (lis)
+    (while (not (or (null filename)
+		    (cps:root-directory-p filename)))
+      (let ((f (file-name-nondirectory filename)))
+	(if (not (or (string= f ".")
+		     (string= f "..")))
+	    (setq lis (cons f lis)))
+	(setq filename (file-name-directory filename))
+	(setq filename (and filename
+			    (directory-file-name filename)))
+	(if (or (string= filename ".")
+		(string= filename ".."))
+	    (setq filename nil))))
+    (setq lis (mapcar #'(lambda (s)
+			  (upcase (replace-regexp-in-string "[^_[:alnum:]]" "_" s)))
+		      lis))
+    (reverse (cl-maplist #'(lambda (l)
+			     (mapconcat #'identity (cons "" l) "_")) lis))))
 
 (provide 'c-program-skeleton)
 ;;; x.el ends here
