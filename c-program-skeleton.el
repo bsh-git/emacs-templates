@@ -116,7 +116,7 @@
 		       (replace-regexp-in-string "[/.]" "_" (substring filename (match-end 0))))))
 	    (concat (file-name-nondirectory (file-name-sans-extension filename))
 		    "_"
-		    (file-name-extension (buffer-file-name)))))))
+		    (file-name-extension (buffer-file-name))))))))
 
 
 (defun netbsd-top-dir (&optional dir)
